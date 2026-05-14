@@ -28,6 +28,8 @@ services:
       DB_PASS: ${DB_PASS:-}
       PYTHONPATH: /app
       LAW_FINDER_MODE: ${LAW_FINDER_MODE:-fast}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     networks:
       - law-test-net
     restart: unless-stopped

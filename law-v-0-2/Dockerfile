@@ -1,10 +1,11 @@
 FROM python:3.12-slim
 
+WORKDIR /build
+COPY pyproject.toml /build/
+COPY app/ /build/app/
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple . && rm -rf /build
+
 WORKDIR /app
-
-COPY pyproject.toml /app/
-RUN pip install --no-cache-dir -e . 2>/dev/null || pip install --no-cache-dir .
-
 COPY app/ /app/
 
 ENV PYTHONPATH=/app
