@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import traceback
 from typing import Optional
 
@@ -45,13 +46,14 @@ async def chat(req: ChatRequest):
             )
         )
 
+        _HEARTBEAT_INTERVAL = 15
         try:
             while not task.done():
                 try:
-                    item = await asyncio.wait_for(progress_q.get(), timeout=0.15)
+                    item = await asyncio.wait_for(progress_q.get(), timeout=_HEARTBEAT_INTERVAL)
                     yield _sse({"type": "progress", "content": item})
                 except asyncio.TimeoutError:
-                    pass
+                    yield ": heartbeat\n\n"
             while not progress_q.empty():
                 yield _sse({"type": "progress", "content": progress_q.get_nowait()})
 
@@ -63,6 +65,8 @@ async def chat(req: ChatRequest):
 
             yield _sse({"type": "done"})
         except Exception as e:
+            import traceback as _tb
+            logging.getLogger(__name__).error("chat error: %s", _tb.format_exc())
             yield _sse({"type": "error", "content": str(e)})
             yield _sse({"type": "done"})
         finally:

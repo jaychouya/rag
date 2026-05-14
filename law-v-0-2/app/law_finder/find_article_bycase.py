@@ -35,6 +35,8 @@ def _content_preview(ref: dict) -> str:
     return s[:_J2_CONTENT_PREVIEW] if len(s) > _J2_CONTENT_PREVIEW else s
 
 
+_LEGACY_MAX_DEPTH = int(os.getenv("LAW_FINDER_LEGACY_MAX_DEPTH", "4"))
+
 async def _find_article_async_legacy(
     case: str,
     docName: str,
@@ -45,7 +47,15 @@ async def _find_article_async_legacy(
     scoreThreshold=3,
     findingMessageCallback: Optional[Callable[[str], None]] = None,
     law_diag: Optional[dict[str, Any]] = None,
+    _depth: int = 0,
 ) -> list[dict]:
+    if _depth >= _LEGACY_MAX_DEPTH:
+        logger.info("legacy: max depth %d reached for %s, collecting leaf nodes", _depth, docName)
+        leaf_results = []
+        for part in lawparts:
+            if isinstance(part, dict):
+                leaf_results.append(part)
+        return leaf_results
     async def process_batch(batch: list[dict]) -> list[dict]:
         if not batch or len(batch) == 0:
             return []
@@ -79,6 +89,14 @@ async def _find_article_async_legacy(
                 if key not in node:
                     node[key] = matching_batch_item[key]
         return scored_nodes
+
+    if _depth == 0 and len(lawparts) > 30:
+        lawparts = _prefilter_flat_nodes(lawparts, case, _NODE_PREFILTER_THRESHOLD)
+        if not lawparts:
+            if law_diag is not None:
+                law_diag["legacy_initial_batches"] = 0
+                law_diag["legacy_recursive"] = True
+            return []
 
     batches = split_batch_by_textlen(
         lawparts, text_key_name="summary", max_batch_size=batch_limit, max_text_length=6000
@@ -132,6 +150,7 @@ async def _find_article_async_legacy(
                         scoreThreshold=scoreThreshold,
                         findingMessageCallback=findingMessageCallback,
                         law_diag=None,
+                        _depth=_depth + 1,
                     )
                     children_tasks.append(child_task)
                 else:
@@ -350,6 +369,8 @@ async def _find_article_async_two_stage(
     return final
 
 
+_LEGACY_NODE_LIMIT = int(os.getenv("LAW_FINDER_LEGACY_NODE_LIMIT", "200"))
+
 async def _find_article_async(
     case: str,
     docName: str,
@@ -363,6 +384,11 @@ async def _find_article_async(
     force_legacy: Optional[bool] = None,
 ) -> list[dict]:
     use_legacy = force_legacy if force_legacy is not None else _use_legacy_tree_llm()
+    if use_legacy:
+        flat_count = len(flatten_law_children(lawparts))
+        if flat_count > _LEGACY_NODE_LIMIT:
+            logger.info("legacy auto-downgrade to two_stage: %s has %d nodes (limit %d)", docName, flat_count, _LEGACY_NODE_LIMIT)
+            use_legacy = False
     if use_legacy:
         return await _find_article_async_legacy(
             case,
@@ -403,8 +429,8 @@ async def find_article(
         max_workers=max_llm_threads,
         llm=LLMSDK,
         title="find_article",
-        max_retry=1 if is_fast else 3,
-        call_timeout=60.0 if is_fast else None,
+        max_retry=2 if is_fast else 3,
+        call_timeout=120.0 if is_fast else None,
     )
 
     tasks = []

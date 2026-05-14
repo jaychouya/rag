@@ -228,7 +228,7 @@ async def _case_match_original(
             document_id_filter=doc_filter,
         )
         laws = laws.get("laws", [])
-        lawids = list(set([law["id"] for law in laws]))
+        lawids = list(set([law["id"] for law in laws if "id" in law]))
         if retrieval_ids:
             lawids = list({*lawids, *retrieval_ids})
 
@@ -363,9 +363,9 @@ async def _case_match_enhanced(
                     document_id_filter=doc_filter, metrics_out=run_metrics,
                 )
                 laws = laws.get("laws", [])
-                lawids = list(set([law["id"] for law in laws]))
-                if retrieval_ids:
-                    lawids = list({*lawids, *retrieval_ids})
+                lawids = list(set([law["id"] for law in laws if "id" in law]))
+                if not lawids and retrieval_ids:
+                    lawids = list(retrieval_ids[:_FTS_SKIP_THRESHOLD])
 
     if wiki_ids:
         lawids = list({*lawids, *wiki_ids})
@@ -381,6 +381,11 @@ async def _case_match_enhanced(
             if nm:
                 messages += f"+ {nm}\n"
     progressCallback(messages) if progressCallback else None
+
+    _MAX_ARTICLE_LAWS = int(os.getenv("LAW_FINDER_MAX_ARTICLE_LAWS", "20"))
+    if len(laws) > _MAX_ARTICLE_LAWS:
+        logger.warning("Capping laws for find_article: %s -> %s", len(laws), _MAX_ARTICLE_LAWS)
+        laws = laws[:_MAX_ARTICLE_LAWS]
 
     content_parts = []
     for l in laws:

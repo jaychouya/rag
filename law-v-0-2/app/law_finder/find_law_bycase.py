@@ -51,53 +51,54 @@ async def find_laws(
         task = json_extractor.do(message=message)
         tasks.append(task)
     
-    # 使用asyncio.gather并发执行所有任务
     try:
-        results_list = await asyncio.gather(*tasks)
+        results_list = await asyncio.gather(*tasks, return_exceptions=True)
         final_results = []
-        for results in results_list:
-            final_results.extend(results)
+        for r in results_list:
+            if isinstance(r, Exception):
+                logger.error("find_laws batch: %s", r)
+                continue
+            if isinstance(r, list):
+                final_results.extend(r)
     except Exception as e:
         raise e
-        
-    final_results = [res for res in final_results if res["score"] >= scoreThreshold]
-    # 根据名字去原数组中查找id
+
+    final_results = [res for res in final_results if isinstance(res, dict) and res.get("score", 0) >= scoreThreshold]
+    matched = []
     for res in final_results:
-        found = False
         for law in laws:
-            if res["name"] == law["name"]:
+            if res.get("name") == law["name"]:
                 res["id"] = law["id"]
                 res["summary"] = law["summary"]
                 res["scenarios"] = law["scenarios"]
-                found = True
+                matched.append(res)
                 break
-        if not found:
-            print(f"Warning: Law {res['name']} not found in original laws, skipping.")
-            final_results.remove(res)
-    
-    
-    # 查询law的详细信息
+        else:
+            logger.warning("Law %s not found in original laws, skipping.", res.get("name"))
+    final_results = matched
+
     laws = await load_laws_by_id([law['id'] for law in final_results])
    
-    # 检查是不是有content没有的law
+    content_by_id = {}
     for law in laws:
-        if not law.get("content"):
-            print(f"[Warning] 《{law['name']}》法律条款内容缺失，跳过查询")
-            final_results = [res for res in final_results if res["id"] != law["id"]]
-    # 将查询到的法律条款content添加到结果中
+        if law.get("content"):
+            content_by_id[law["id"]] = law
+        else:
+            logger.warning("《%s》法律条款内容缺失，跳过", law.get("name"))
+
+    kept = []
     for res in final_results:
-        found = False
-        for law in laws:
-            if res["id"] == law["id"]:
-                found = True
-                res["content"] = law["content"]
-                if res['name'] != law['name']:
-                    final_results.remove(res)
-                    print(f"[Warning] 解析出错：《{res['name']}》法律条款名称与《{law['name']}》不一致")
-                break
-        if not found:
-            print(f"[Warning] 《{res['name']}》法律条款和原库不匹配，跳过查询")
-            final_results.remove(res)
+        rid = res.get("id")
+        if rid not in content_by_id:
+            logger.warning("《%s》法律条款和原库不匹配，跳过", res.get("name"))
+            continue
+        law = content_by_id[rid]
+        if res.get("name") != law.get("name"):
+            logger.warning("解析出错：《%s》名称与《%s》不一致", res.get("name"), law.get("name"))
+            continue
+        res["content"] = law["content"]
+        kept.append(res)
+    final_results = kept
 
     final_results = sorted(final_results, key=lambda x: x["score"], reverse=True)
     valuable_results = final_results[:topK]
@@ -131,28 +132,29 @@ async def find_categories(case, category_scope: Optional[list[str]] = None, scor
         task = json_extractor.do(message=message)
         tasks.append(task)
     
-    # 使用asyncio.gather并发执行所有任务
     try:
-        results_list = await asyncio.gather(*tasks)
+        results_list = await asyncio.gather(*tasks, return_exceptions=True)
         final_results = []
-        for results in results_list:
-            final_results.extend(results)
+        for r in results_list:
+            if isinstance(r, Exception):
+                logger.error("find_categories batch: %s", r)
+                continue
+            if isinstance(r, list):
+                final_results.extend(r)
     except Exception as e:
         raise e
-        
-    final_results = [res for res in final_results if res["score"] >= scoreThreshold]
-    # 根据名字去原数组中查找id
+
+    final_results = [res for res in final_results if isinstance(res, dict) and res.get("score", 0) >= scoreThreshold]
+    matched = []
     for res in final_results:
-        found = False
         for category in categories:
-            if res["name"] == category["name"]:
+            if res.get("name") == category["name"]:
                 res["id"] = category["id"]
                 res["type"] = category["type"]
                 res["summary"] = category["summary"]
-                found = True
+                matched.append(res)
                 break
-        if not found:
-            print(f"Warning: Category {res['name']} not found in original categories, skipping.")
-            final_results.remove(res)
-    final_results = sorted(final_results, key=lambda x: x["score"], reverse=True)[:topK]
+        else:
+            logger.warning("Category %s not found, skipping.", res.get("name"))
+    final_results = sorted(matched, key=lambda x: x.get("score", 0), reverse=True)[:topK]
     return final_results
