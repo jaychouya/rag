@@ -1,0 +1,46 @@
+protocolVersion: "0.2.9"
+url: ${A2A_URL}
+provider:
+  organization: "杭州拓麦科技有限公司"
+  url: "https://www.tmindtech.com"
+version: "1.0.0"
+description: "提供法规查询相关服务, 如根据案情匹配相关的法规条款，用以指导用户对于量刑、处罚、赔偿等问题的决策。也可以根据指定法规的内容查询对应的条款"
+
+capabilities:
+  streaming: true
+  push_notifications: true
+  state_transition_history: false
+  
+default_input_modes: ["text/plain"]
+default_output_modes: ["application/json", "text/plain"]
+skills:
+  - id: "query_law_detail"
+    name: "查询指定的法规或者法规章节条款，查询具体的内容"
+    description: "用户描述了法规或者法规章节条款，想要查询查询具体的内容"
+    tags: ["法规查询"]
+    examples:
+      - "看看信访条例具体在说什么"
+      - "查询反恐法第一章第二条的内容"
+    input_modes: ["text/plain"]
+    output_modes:
+      - "text/plain"
+  - id: "anlyze_case"
+    name: "根据案例，查询相关的法规"
+    description: "用户描述了案例，想要查询相关的法规条款"
+    tags: ["法规查询", "案例分析"]
+    examples:
+      - "我被打了，查询相关的法规条款"
+      - "我要起诉xxx，具体过程是xxx，查询相关的法规条款"
+    input_modes: ["text/plain"]
+    output_modes:
+      - "text/plain"
+  - id: "list_support_laws"
+    name: "列出支持的法规"
+    description: "用户想要查询支持的法规"
+    tags: ["法规查询", "法规列表"]
+    examples:
+      - "列出支持的法规"
+    input_modes: ["text/plain"]
+    output_modes:
+      - "text/plain"
+supports_authenticated_extended_card: false

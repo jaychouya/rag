@@ -1,0 +1,27 @@
+
+{% for item in items %}
+# 编号：{{ item.idx }}
+# 路径：{{ item.pathname }}
+{% if item.parent_pathname %}
+# 上级路径：{{ item.parent_pathname }}
+{% endif %}
++ 概述：{{ item.summary }}
++ 适用场景：{{ item.scenario }}
+{% endfor %}
+
+**任务**
+# 以上是《{{ docName }}》中可供参考的章节或法条节点（仅路径与概述）
+# 根据用户提供的案件事实及需求，按 1-5 分对每个节点的可参考程度打分：
+1分-无需参考或不符合需求
+2分-参考意义甚微
+3分-可参考，可能沾边
+4分-很有可能包含相关法条
+5分-高度相关
+
+**输出要求**
++ 使用 ```json 包裹的数组
++ 每项字段：{"idx": 整数编号, "name": 必须与上表「路径」完全一致, "reason": 打分理由中文, "score": 1-5 整数}
++ json 的 key 严格使用英文
+
+**案例与需求**
+{{ case }}

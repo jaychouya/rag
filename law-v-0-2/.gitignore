@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__
+logs/**/*.md
+test/**/*.json
+test/*.json
+!test/law_finder_eval_cases.json
+!test/law_finder_regression_cases.json
+law_finder_regression_last_run.json
+app/logs
+.openmcp
+.vscode/
+test/run_mcp.sh
+merged.env
+release_*/
+release/*

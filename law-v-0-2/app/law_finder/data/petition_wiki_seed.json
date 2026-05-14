@@ -1,0 +1,44 @@
+[
+  {
+    "slug": "xinfang-chengxu",
+    "title": "信访事项提出与受理",
+    "triggers": "信访,来访,来信,网上信访,信访局,受理,登记,转送",
+    "actor": "信访人、有权处理机关",
+    "action": "提出信访事项、登记受理",
+    "context": "公民、法人或其他组织反映情况、提出建议意见或投诉请求",
+    "consequence": "依法分类处理、告知是否受理及理由",
+    "linked_document_ids": [],
+    "body": "信访工作应属地管理、分级负责，谁主管谁负责；对依法应通过诉讼、仲裁、行政复议等途径解决的，告知信访人依照有关法律程序提出。",
+    "effective_from": null,
+    "repealed": false,
+    "source_version": "seed@1"
+  },
+  {
+    "slug": "xinfang-fucha",
+    "title": "信访复查复核与终结",
+    "triggers": "复查,复核,信访复查,不再受理,三级终结,终结",
+    "actor": "信访人、原办理机关、复查复核机关",
+    "action": "申请复查、复核",
+    "context": "对信访处理意见不服",
+    "consequence": "复查、复核意见为信访事项终结意见之一",
+    "linked_document_ids": [],
+    "body": "信访人对行政机关作出的信访事项处理意见不服的，可以自收到书面答复之日起规定期限内请求原办理行政机关的上一级行政机关复查；对复查意见不服的，可以向复查机关的上一级行政机关请求复核。",
+    "effective_from": null,
+    "repealed": false,
+    "source_version": "seed@1"
+  },
+  {
+    "slug": "xinfang-guifan",
+    "title": "依法分类处理信访诉求",
+    "triggers": "依法分类,诉访分离,导入法定程序,调解,和解",
+    "actor": "信访工作机构、有关机关",
+    "action": "甄别诉求性质、分流处理",
+    "context": "诉求属于行政程序、司法程序或其他法定途径",
+    "consequence": "导入相应法定途径办理并告知信访人",
+    "linked_document_ids": [],
+    "body": "对申诉求决类信访事项，能够适用信访程序以外其他法定程序解决的，导入相应程序；适用信访程序的，按信访条例等办理。",
+    "effective_from": null,
+    "repealed": false,
+    "source_version": "seed@1"
+  }
+]

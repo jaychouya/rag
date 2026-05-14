@@ -1,0 +1,22 @@
++ 案件简述：{{case_info['summary']}}
++ 相关人员：{{ case_info.relations | join(', ') }}
+{%- if not case_info.contention %}
++ 争议焦点：不明确
+{%- elif case_info.contention | length == 1 %}
++ 争议焦点：{{ case_info.contention[0] }}
+{%- elif case_info.contention | length > 1 %}
++ 争议焦点：
+{%- for cont in case_info.contention %}
+ - {{ cont }}
+{%- endfor %}
+{% endif %}
++ 案件关键词：{{ case_info.keywords | join(', ') }}
+{%- if case_info.query %}
++ **用户查询需求：{{ case_info.query }}
+{%- endif %}
+{%- if law_scope %}
++ **仅从以下范围中进行查询和搜索**：
+{%- for scope in law_scope %}
+- {{ scope.path_summary }}
+{%- endfor %}
+{%- endif %}

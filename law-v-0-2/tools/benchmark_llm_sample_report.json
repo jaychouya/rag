@@ -1,0 +1,24 @@
+{
+  "mode": "mock",
+  "note": "未调用真实 API，仅供报表/对比结构示例",
+  "env": {
+    "LLM_BASE_URL": "https://open.bigmodel.cn/api/paas/v4",
+    "LLM_MODEL": "glm-4-flash"
+  },
+  "chat_benchmark": {
+    "rounds": 5,
+    "chat_ms_avg": 420.0,
+    "chat_ms_min": 310.0,
+    "chat_ms_max": 580.0,
+    "chat_ms_p50": 400.0,
+    "chat_ms_p95": 560.0
+  },
+  "find_article_benchmark": {
+    "find_article_wall_ms": 1850.0,
+    "result_paths": [
+      "MockLaw/Chapter1/Article1"
+    ],
+    "result_count": 1
+  },
+  "architecture_note": "两阶段减少树递归 LLM 次数；墙钟受 J1 批次数、J2 Top-K、网络影响。"
+}

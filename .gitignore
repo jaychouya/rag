@@ -1,0 +1,6 @@
+tadk/
+tagent/
+search_transcript*.py
+__pycache__/
+*.pyc
+.env

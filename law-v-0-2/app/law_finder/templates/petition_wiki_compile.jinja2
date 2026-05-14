@@ -1,0 +1,4 @@
+你是法规信访知识库编译器。根据下列种子条目，输出**一个** JSON 对象（不要 markdown 围栏），键与种子一致，可改写 body、triggers（逗号分隔更多同义词）、actor、action、context、consequence；linked_document_ids 为 LegalDocuments.id 整数数组，能映射则填实值否则 []；effective_from 为 ISO8601 或 null；repealed 为布尔；source_version 为短字符串或 null。
+
+种子条目：
+{{ entry | tojson }}

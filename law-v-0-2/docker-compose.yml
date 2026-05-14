@@ -1,0 +1,44 @@
+version: '3'
+services:
+  law-a2a-service:
+    image: ${LATEST_PYTHON_ENV_IMAGE}
+    container_name: dsx_a2a_law
+    environment:
+      AGENT_NAME: a2a_law_agent
+      AGENT_VERSION: ${AGENT_VERSION:-1.0.0}
+      A2A_URL: http://law-a2a-service
+      TZ: ${TZ}
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL}
+      AUTH_URL: ${AUTH_URL:-}
+      DEBUG_MODE: ${DEBUG_MODE:-false}
+      PGDB_HOST: ${PGDB_HOST:-192.168.3.191}
+      PGDB_PORT: ${PGDB_PORT:-25432}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      PGDB_LOG_NAME: ${PGDB_LOG_NAME:-agent_logs}
+      PGDB_DATA_NAME: ${PGDB_DATA_NAME:-agent_data}
+      PGDB_USER: ${PGDB_USER:-postgres}
+      PGDB_PASS: ${PGDB_PASS:-123456}
+      PGDB_NAME: ${PGDB_NAME:-law_test}
+      PGDB_BACKUP_BUCKET: ${PGDB_BACKUP_BUCKET:-agent_data_backup}
+      MINIO_HOST: ${MINIO_HOST:-localhost}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_DATA_BACKUP_BUCKET: ${MINIO_DATA_BACKUP_BUCKET:-data-backup}
+      PHOENIX_URL: ${PHOENIX_URL:-http://phoenix:6006/v1/traces}
+      PYTHONPATH: /app
+    networks:
+      - dsx-service-network
+    volumes:
+      - ./app:/app
+    restart: always
+    entrypoint: ["python3", "/app/main.py"]
+
+networks:
+  dsx-service-network:
+    external: true

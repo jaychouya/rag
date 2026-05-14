@@ -1,0 +1,22 @@
+[
+  {
+    "id": "law_detail_path",
+    "query": "《公安部党风政风警风监督员工作办法》第一条",
+    "question_type": "law_detail",
+    "expected_pathname_substring": "第1条",
+    "min_results": 0
+  },
+  {
+    "id": "law_list_smoke",
+    "query": "列出与督察相关的法规名称",
+    "question_type": "law_list",
+    "min_results": 0
+  },
+  {
+    "id": "clause_level_negative",
+    "note": "同一条不同款易混淆时，评测应检查 path 是否精确到款",
+    "query": "占位：替换为真实案情与期望 path",
+    "expected_pathname_substring": "",
+    "min_results": 0
+  }
+]

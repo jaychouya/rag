@@ -1,0 +1,50 @@
+version: '3'
+services:
+  nimue-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: law_finder_api
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      SERVER_PORT: "8000"
+      A2A_SERVER_PORT: "8000"
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL}
+      AGENT_NAME: ${AGENT_NAME:-a2a_law_agent}
+      AGENT_VERSION: ${AGENT_VERSION:-1.0.0}
+      A2A_URL: http://nimue-api
+      AUTH_URL: ${AUTH_URL:-}
+      DEBUG_MODE: ${DEBUG_MODE:-false}
+      PGDB_HOST: ${PGDB_HOST:-192.168.3.191}
+      PGDB_PORT: ${PGDB_PORT:-25432}
+      PGDB_NAME: ${PGDB_NAME:-law_test}
+      PGDB_USER: ${PGDB_USER:-postgres}
+      PGDB_PASS: ${PGDB_PASS:-123456}
+      DB_HOST: ${DB_HOST:-}
+      DB_PORT: ${DB_PORT:-}
+      DB_USER: ${DB_USER:-}
+      DB_PASS: ${DB_PASS:-}
+      PYTHONPATH: /app
+      LAW_FINDER_MODE: ${LAW_FINDER_MODE:-fast}
+    networks:
+      - law-test-net
+    restart: unless-stopped
+
+  nimue-web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: law_finder_web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    networks:
+      - law-test-net
+    depends_on:
+      - nimue-api
+    restart: unless-stopped
+
+networks:
+  law-test-net:
+    driver: bridge

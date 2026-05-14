@@ -1,0 +1,4 @@
+# MCP服务配置
+# 支持环境变量替换，格式：${VAR:-default}
+
+mcp_services:

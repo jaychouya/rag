@@ -1,0 +1,42 @@
+[
+  {
+    "id": "supervise_law_basis",
+    "law_file": "laws/parsed_laws/督察/公安部党风政风警风监督员工作办法.json",
+    "case": "讨论《公安部党风政风警风监督员工作办法》的立法目的与制定依据，应落在总则中明确“根据……法律法规制定本办法”的条文，不要引用第三章监督员职责权限类条文。",
+    "gold_path_parts": [["第1章", "第1条"]],
+    "negative_path_substrings": ["/第10条"],
+    "k_list": [5, 20, 80]
+  },
+  {
+    "id": "supervise_appointment",
+    "law_file": "laws/parsed_laws/督察/公安部党风政风警风监督员工作办法.json",
+    "case": "案情聚焦：公安部监督员由谁聘任、对谁实施监督。应引用总则中规定聘任主体与监督对象的条款，不要误引第二章关于聘请范围、条件的条文。",
+    "gold_path_parts": [["第2条"]],
+    "negative_path_substrings": ["/第5条", "/第6条"],
+    "k_list": [5, 20, 80]
+  },
+  {
+    "id": "assault_police_art1_not_art2",
+    "law_file": "laws/parsed_laws/督察/最高人民法院 最高人民检察院关于办理袭警刑事案件适用法律若干问题的解释.json",
+    "case": "交通执法现场，行为人对正在依法执勤的交警实施踢打并造成轻微伤，是否属于“暴力袭击正在依法执行职务的人民警察”的认定问题。需要引用解释中界定“暴力袭击”具体情形的条文，不要引用专门规定“严重危及其人身安全”的另一条。",
+    "gold_path_parts": [["第1条"]],
+    "negative_path_substrings": ["/第2条"],
+    "k_list": [5, 20, 80]
+  },
+  {
+    "id": "assault_police_art2_not_art1",
+    "law_file": "laws/parsed_laws/督察/最高人民法院 最高人民检察院关于办理袭警刑事案件适用法律若干问题的解释.json",
+    "case": "行为人驾驶机动车撞击正在依法执行职务的民警及其乘坐车辆，暴力程度足以致人重伤或死亡，应引用解释中关于“严重危及其人身安全”认定的条文，不要引用仅界定一般“暴力袭击”情形的条文。",
+    "gold_path_parts": [["第2条"]],
+    "negative_path_substrings": ["/第1条"],
+    "k_list": [5, 20, 80]
+  },
+  {
+    "id": "dual_gold_supervise",
+    "law_file": "laws/parsed_laws/督察/公安部党风政风警风监督员工作办法.json",
+    "case": "同时说明：办法的立法依据条款，以及监督员由公安部聘任并对公安机关及民警实施监督的条款，需分别命中两条不同条文。",
+    "gold_path_parts": [["第1条"], ["第2条"]],
+    "negative_path_substrings": ["/第10条"],
+    "k_list": [10, 40, 120]
+  }
+]

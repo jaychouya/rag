@@ -1,0 +1,81 @@
+# 智能体配置示例
+# 支持环境变量替换，格式：${VAR:-default}
+
+# 服务配置
+server:
+  port: ${SERVER_PORT:-80}
+  host: ${SERVER_HOST:-0.0.0.0}
+  auth_url: ${AUTH_URL:-}
+
+# 智能体基本配置
+agent_name: ${AGENT_NAME} # 必须设置，不能为空
+agent_description: "提供法规查询相关服务"
+agent_version: ${AGENT_VERSION:-1.0.0}
+agent_character: "你是督察/信访/审计一体化（简称督审信一体化）的工作辅助智能体， 名叫小安， 负责为督察/信访/审计人员提供工作辅助。话术要像一个警察，严谨有条理。"
+debug_mode: ${DEBUG_MODE:-false}  # 启用调试模式以记录详细日志
+strict_mode: ${STRICT_MODE:-true}  # 启用严格模式，true-在调用工具时，如果工具不可用，则返回错误, false-在调用工具时，如果工具不可用，则自己回答
+knowledges:  # 智能体固定知识列表，用于对话期间的系统提示
+  - 你是由杭州拓麦科技有限公司开发的督审信一体化智能体应用
+  - 你的模型参数量只有32B，运行在国产显卡上，所以性能上会比较慢
+  - "**督审信一体化**指的是督察、信访、审计三个部门的工作一体化，通过督审信一体化平台，实现三个部门的工作协同"
+  - "**视频督察**：通过视频监控系统、远程连线等技术手段，对被督察对象的工作状态、警种情况进行非接触式监督检查。**点位**即指摄像头，点位拍摄到场景中如果出现预定的违规行为，则会产生**视频督察预警**， 预警核查任务由视频督察任务管理系统进行流转"
+  - "**交叉督察**：由不同区域或部门的督察人员交叉开展检查，即 A 地区的督察组去 B 地区督察，B 地区的督察组去 A 地区督察，避免 “自督自查” 的局限性。"
+  - "**警种督察**：督察人员直接前往被督察对象的工作警种，通过实地查看、座谈访谈、查阅资料等方式开展面对面检查"
+forbidden_words: # 智能体禁止回答的问题范围
+  - 传授犯罪方法或规避侦查的问题
+  - 策划或煽动违法活动的问题
+  - 危害国家安全的问题
+  - 与警务工作无关的低俗、色情、暴力内容
+  - 恶意骚扰、侮辱或无关的问题
+  - 重复、无意义的骚扰性提问，如连续发送无意义字符、重复询问已明确拒绝的问题，智能体可适当提醒后终止对话
+
+# MCP服务配置已移至 mcp_conf.yml 文件中
+
+# LLM配置（必须的环境变量）
+llm_config:
+  base_url: ${LLM_BASE_URL}
+  model: ${LLM_MODEL}
+  api_key: ${LLM_API_KEY}
+  temperature: 0.7
+  max_tokens: 4096
+  context_window_len: 32768  # 上下文窗口大小，用于计算输入限制
+  timeout: 60
+  retry_count: 3
+  additional_params: {}
+
+# 历史对话缓存配置
+history_cache_config:
+  enabled: true
+  max_history_count: 100
+
+# 会话配置
+session_config:
+  timeout_hours: 12
+  cleanup_interval_minutes: 30 
+
+# 数据库配置
+database:
+  host: ${PGDB_HOST:-localhost}
+  port: ${PGDB_PORT:-5432}
+  log_database: ${PGDB_LOG_NAME:-agent_logs}
+  data_database: ${PGDB_DATA_NAME:-agent_data}
+  username: ${PGDB_USER:-postgres}
+  password: ${PGDB_PASS:-}
+  backup_bucket: ${PGDB_BACKUP_BUCKET:-agent_data_backup}
+
+minio:
+  host: ${MINIO_HOST:-localhost}
+  port: ${MINIO_PORT:-9000}
+  user: ${MINIO_ROOT_USER}
+  password: ${MINIO_ROOT_PASSWORD}
+
+mcp_health_check:
+  interval: 120    # 健康检查间隔（秒）
+  retry_delay: 30  # 重试延迟（秒）
+
+# A2A服务配置
+a2a_service:
+  enabled: true #一旦启动，同级目录a2a_card.yml必须存在，否则会报错
+  # A2A服务启动后是否禁用服务的chat方法
+  disable_chat: true
+  # config_file: "a2a_service_conf.yml"  # 去掉

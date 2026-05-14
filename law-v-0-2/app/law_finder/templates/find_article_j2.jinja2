@@ -1,0 +1,26 @@
+
+{% for item in items %}
+---
+# 编号：{{ item.idx }}
+# 路径：{{ item.pathname }}
+{% if item.parent_pathname %}
+# 上级路径：{{ item.parent_pathname }}
+{% endif %}
++ 概述：{{ item.summary }}
+{% if item.content_preview %}
++ 正文摘录：{{ item.content_preview }}
+{% endif %}
+{% endfor %}
+
+**任务**
+# 以上是《{{ docName }}》经初筛后的候选节点（含路径与摘录）
+# 请判断哪些节点**确实适用于**用户所述案情与需求，并给出最终分数（1-5）与理由。
+
+**输出要求**
++ 使用 ```json 包裹的数组
++ 仅输出**仍可能适用**的节点；明显无关的不要输出
++ 每项：{"idx": 整数, "name": 路径全文与上表一致, "score": 1-5, "reason": 中文理由}
++ json 的 key 严格使用英文
+
+**案例与需求**
+{{ case }}
