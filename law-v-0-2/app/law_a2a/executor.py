@@ -53,7 +53,6 @@ class LawA2AgentExecutor(AgentExecutor):
                             userquery,
                             category_scope=cat,
                             law_tags=tags,
-                            max_llm_threads=8,
                             progressCallback=callback,
                         )
                     )

@@ -29,6 +29,10 @@ logger = logging.getLogger(__name__)
 _RETRIEVAL_LIMIT = int(os.getenv("LAW_FINDER_RETRIEVAL_LIMIT", "80"))
 
 
+def env_max_llm_threads() -> int:
+    return int(os.getenv("LAW_FINDER_MAX_LLM_THREADS", "12"))
+
+
 def _finder_mode() -> str:
     ov = _mode_override.get()
     if ov:
@@ -430,9 +434,11 @@ async def auto_query(
     query: str,
     category_scope: Optional[list[str]] = None,
     law_tags: Optional[list[str]] = None,
-    max_llm_threads=8,
+    max_llm_threads: Optional[int] = None,
     progressCallback: Optional[Callable[[str], None]] = None,
 ):
+    if max_llm_threads is None:
+        max_llm_threads = env_max_llm_threads()
     with timed_stage("auto_query_classify"):
         system_prompt = get_template("auto_classify.j2").render()
         code_extractor = CodeExtractor(llm=LLMSDK)

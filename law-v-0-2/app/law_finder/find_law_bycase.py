@@ -1,6 +1,7 @@
 # 通过案例查找目录及其中的法规
 import asyncio
 import logging
+import os
 from typing import Any, Callable, Optional
 
 from law_finder.jinja_env import get_template
@@ -33,7 +34,10 @@ async def find_laws(
     logger.info("find_laws candidate_count=%s filter=%s", len(laws), len(document_id_filter or []))
     findingMessageCallback("正在查询可以参考的法规，请稍等...\n") if findingMessageCallback else None
 
-    batches = split_batch_by_textlen(laws, text_key_name="summary", max_batch_size=10, max_text_length=4000)
+    fl_batch = int(os.getenv("LAW_FINDER_FIND_LAWS_BATCH", "14"))
+    batches = split_batch_by_textlen(
+        laws, text_key_name="summary", max_batch_size=max(6, min(fl_batch, 20)), max_text_length=4000
+    )
     if metrics_out is not None:
         metrics_out["find_laws_candidate_count"] = len(laws)
         metrics_out["find_laws_batches"] = len(batches)

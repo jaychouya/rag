@@ -41,7 +41,6 @@ async def chat(req: ChatRequest):
                 req.query,
                 category_scope=req.category_scope or None,
                 law_tags=req.law_tags or None,
-                max_llm_threads=8,
                 progressCallback=cb,
             )
         )

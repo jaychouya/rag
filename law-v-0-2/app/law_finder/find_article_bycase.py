@@ -216,6 +216,10 @@ async def _find_article_async_two_stage(
     scoreThreshold: int = 3,
     findingMessageCallback: Optional[Callable[[str], None]] = None,
     law_diag: Optional[dict[str, Any]] = None,
+    *,
+    prefilter_cap: Optional[int] = None,
+    j2_top_cap: Optional[int] = None,
+    j1_merge_textlen: Optional[int] = None,
 ) -> list[dict]:
     _ = extra_prompt
     flat = flatten_law_children(lawparts)
@@ -229,7 +233,8 @@ async def _find_article_async_two_stage(
         return []
 
     original_count = len(flat)
-    flat = _prefilter_flat_nodes(flat, case, _NODE_PREFILTER_THRESHOLD)
+    pf_limit = prefilter_cap if prefilter_cap is not None else _NODE_PREFILTER_THRESHOLD
+    flat = _prefilter_flat_nodes(flat, case, pf_limit)
     if law_diag is not None:
         law_diag["prefiltered_count"] = len(flat)
     if not flat:
@@ -249,8 +254,10 @@ async def _find_article_async_two_stage(
         findingMessageCallback(msg)
 
     j1_rows = rows_for_j1_batch(flat)
+    j1_txt = j1_merge_textlen if j1_merge_textlen is not None else 6000
+    j1_txt = max(4000, min(j1_txt, 9000))
     batches = split_batch_by_textlen(
-        j1_rows, text_key_name="summary", max_batch_size=batch_limit, max_text_length=6000
+        j1_rows, text_key_name="summary", max_batch_size=batch_limit, max_text_length=j1_txt
     )
     if law_diag is not None:
         law_diag["j1_batches"] = len(batches)
@@ -299,7 +306,9 @@ async def _find_article_async_two_stage(
     ranked = sorted(best.items(), key=lambda x: x[1].get("score", 0), reverse=True)
     if law_diag is not None:
         law_diag["j1_ranked_pathnames"] = [flat[idx]["pathname"] for idx, _ in ranked if 0 <= idx < len(flat)]
-    top = ranked[:_J2_TOP]
+    j2_n = j2_top_cap if j2_top_cap is not None else _J2_TOP
+    j2_n = max(5, min(j2_n, _J2_TOP))
+    top = ranked[:j2_n]
     if not top:
         if law_diag is not None:
             law_diag["stage_final_pathnames"] = []
@@ -382,6 +391,7 @@ async def _find_article_async(
     findingMessageCallback: Optional[Callable[[str], None]] = None,
     law_diag: Optional[dict[str, Any]] = None,
     force_legacy: Optional[bool] = None,
+    fast_pipeline: bool = False,
 ) -> list[dict]:
     use_legacy = force_legacy if force_legacy is not None else _use_legacy_tree_llm()
     if use_legacy:
@@ -401,6 +411,11 @@ async def _find_article_async(
             findingMessageCallback,
             law_diag=law_diag,
         )
+    kw: dict[str, Any] = {}
+    if fast_pipeline:
+        kw["prefilter_cap"] = int(os.getenv("LAW_FINDER_FAST_NODE_PREFILTER", "56"))
+        kw["j2_top_cap"] = int(os.getenv("LAW_FINDER_FAST_J2_TOP", "14"))
+        kw["j1_merge_textlen"] = int(os.getenv("LAW_FINDER_FAST_J1_MAX_TEXT", "6800"))
     return await _find_article_async_two_stage(
         case,
         docName,
@@ -411,6 +426,7 @@ async def _find_article_async(
         scoreThreshold,
         findingMessageCallback,
         law_diag=law_diag,
+        **kw,
     )
 
 
@@ -432,6 +448,11 @@ async def find_article(
         max_retry=2 if is_fast else 3,
         call_timeout=120.0 if is_fast else None,
     )
+    j1_batch = (
+        int(os.getenv("LAW_FINDER_FAST_J1_BATCH", "24"))
+        if is_fast
+        else int(os.getenv("LAW_FINDER_ARTICLE_BATCH", "20"))
+    )
 
     tasks = []
     task_metadata = []
@@ -448,11 +469,12 @@ async def find_article(
             law["docName"],
             law["children"],
             json_extractor,
-            batch_limit=20,
+            batch_limit=j1_batch,
             scoreThreshold=scoreThreshold,
             findingMessageCallback=findingMessageCallback,
             law_diag=ld,
             force_legacy=force_legacy,
+            fast_pipeline=is_fast,
         )
         tasks.append(task)
         task_metadata.append(law)
