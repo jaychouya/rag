@@ -30,7 +30,7 @@ _RETRIEVAL_LIMIT = int(os.getenv("LAW_FINDER_RETRIEVAL_LIMIT", "80"))
 
 
 def env_max_llm_threads() -> int:
-    return int(os.getenv("LAW_FINDER_MAX_LLM_THREADS", "12"))
+    return int(os.getenv("LAW_FINDER_MAX_LLM_THREADS", "16"))
 
 
 def _finder_mode() -> str:
@@ -320,9 +320,12 @@ async def _case_match_enhanced(
                     findingMessageCallback=progressCallback, metrics_out=run_metrics,
                 )
                 cat_ids = [c["id"] for c in categories]
+            _ret_lim = _RETRIEVAL_LIMIT
+            if not force_legacy:
+                _ret_lim = min(_ret_lim, int(os.getenv("LAW_FINDER_FAST_RETRIEVAL_LIMIT", "52")))
             retrieval_ids = await try_search_document_ids(
                 case_prompt, law_tags=merged_law_tags or None, category_ids=cat_ids or None,
-                limit=_RETRIEVAL_LIMIT, direct_keywords=ci_kws_list,
+                limit=_ret_lim, direct_keywords=ci_kws_list,
             )
             fts_count = len(retrieval_ids) if retrieval_ids else 0
             if fast_direct and fts_count > 0:
@@ -352,7 +355,7 @@ async def _case_match_enhanced(
                     message += f"+ {category['name']}\n"
                 message += f"\n将继续为您查找相关的法规内容，请稍后...\n"
                 progressCallback(message)
-            _FTS_SKIP_THRESHOLD = int(os.getenv("LAW_FINDER_FTS_SKIP_THRESHOLD", "15"))
+            _FTS_SKIP_THRESHOLD = int(os.getenv("LAW_FINDER_FTS_SKIP_THRESHOLD", "18"))
             if retrieval_ids and 0 < len(retrieval_ids) <= _FTS_SKIP_THRESHOLD:
                 logger.info("fast-path: FTS returned %s ids, skipping find_laws LLM", len(retrieval_ids))
                 run_metrics["find_laws_skipped"] = True
@@ -386,7 +389,10 @@ async def _case_match_enhanced(
                 messages += f"+ {nm}\n"
     progressCallback(messages) if progressCallback else None
 
-    _MAX_ARTICLE_LAWS = int(os.getenv("LAW_FINDER_MAX_ARTICLE_LAWS", "20"))
+    if not force_legacy:
+        _MAX_ARTICLE_LAWS = int(os.getenv("LAW_FINDER_FAST_MAX_ARTICLE_LAWS", "12"))
+    else:
+        _MAX_ARTICLE_LAWS = int(os.getenv("LAW_FINDER_MAX_ARTICLE_LAWS", "20"))
     if len(laws) > _MAX_ARTICLE_LAWS:
         logger.warning("Capping laws for find_article: %s -> %s", len(laws), _MAX_ARTICLE_LAWS)
         laws = laws[:_MAX_ARTICLE_LAWS]

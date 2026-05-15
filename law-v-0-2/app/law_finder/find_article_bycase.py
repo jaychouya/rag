@@ -413,9 +413,9 @@ async def _find_article_async(
         )
     kw: dict[str, Any] = {}
     if fast_pipeline:
-        kw["prefilter_cap"] = int(os.getenv("LAW_FINDER_FAST_NODE_PREFILTER", "56"))
-        kw["j2_top_cap"] = int(os.getenv("LAW_FINDER_FAST_J2_TOP", "14"))
-        kw["j1_merge_textlen"] = int(os.getenv("LAW_FINDER_FAST_J1_MAX_TEXT", "6800"))
+        kw["prefilter_cap"] = int(os.getenv("LAW_FINDER_FAST_NODE_PREFILTER", "40"))
+        kw["j2_top_cap"] = int(os.getenv("LAW_FINDER_FAST_J2_TOP", "10"))
+        kw["j1_merge_textlen"] = int(os.getenv("LAW_FINDER_FAST_J1_MAX_TEXT", "8000"))
     return await _find_article_async_two_stage(
         case,
         docName,
@@ -449,7 +449,7 @@ async def find_article(
         call_timeout=120.0 if is_fast else None,
     )
     j1_batch = (
-        int(os.getenv("LAW_FINDER_FAST_J1_BATCH", "24"))
+        int(os.getenv("LAW_FINDER_FAST_J1_BATCH", "30"))
         if is_fast
         else int(os.getenv("LAW_FINDER_ARTICLE_BATCH", "20"))
     )
