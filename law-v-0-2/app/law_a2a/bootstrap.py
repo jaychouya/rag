@@ -64,14 +64,16 @@ def _apply_llm_from_config(cfg: dict) -> None:
     from law_compat.openai_sdk import OpenAICompatibleSDK
 
     lc = cfg["llm_config"]
-    lf_llm.LLMSDK = OpenAICompatibleSDK(
-        base_url=lc["base_url"],
-        model=lc["model"],
-        api_key=lc.get("api_key") or "",
-        temperature=float(lc.get("temperature", 0.7)),
-        max_tokens=lc.get("max_tokens"),
-        context_window_len=lc.get("context_window_len", 32768),
-        timeout=float(lc.get("timeout", 300)),
+    lf_llm.replace_default_llm(
+        OpenAICompatibleSDK(
+            base_url=lc["base_url"],
+            model=lc["model"],
+            api_key=lc.get("api_key") or "",
+            temperature=float(lc.get("temperature", 0.7)),
+            max_tokens=lc.get("max_tokens"),
+            context_window_len=lc.get("context_window_len", 32768),
+            timeout=float(lc.get("timeout", 300)),
+        )
     )
 
 

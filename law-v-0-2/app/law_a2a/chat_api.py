@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import traceback
 from typing import Optional
 
@@ -16,20 +17,55 @@ class ChatRequest(BaseModel):
     mode: Optional[str] = None
     category_scope: Optional[list[str]] = None
     law_tags: Optional[list[str]] = None
+    llm_api_key: Optional[str] = None
+    llm_base_url: Optional[str] = None
+    llm_model: Optional[str] = None
 
 
 def _sse(data: dict) -> str:
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def _client_llm_required() -> bool:
+    v = os.getenv("LAW_CHAT_CLIENT_LLM_REQUIRED", "").strip().lower()
+    return v in ("1", "true", "yes", "on")
+
+
 @router.post("/chat")
 async def chat(req: ChatRequest):
+    if _client_llm_required() and not (req.llm_api_key or "").strip():
+
+        async def deny():
+            yield _sse(
+                {
+                    "type": "error",
+                    "content": "本服务未开放公用模型：请在请求中带上您自己的 llm_api_key（及可选的 llm_base_url、llm_model），或在部署端关闭环境变量 LAW_CHAT_CLIENT_LLM_REQUIRED。",
+                }
+            )
+            yield _sse({"type": "done"})
+
+        return StreamingResponse(deny(), media_type="text/event-stream")
+
     async def stream():
+        from law_compat.openai_sdk import OpenAICompatibleSDK
         from law_finder.finder import _mode_override, auto_query, get_summary_law_result_prompt
+        from law_finder import llm as lf_llm
         from law_finder.llm import LLMSDK
 
         if req.mode:
             _mode_override.set(req.mode.strip().lower())
+
+        token = None
+        task = None
+        key = (req.llm_api_key or "").strip()
+        if key:
+            bu = (req.llm_base_url or lf_llm.LLM_BASE_URL or "").strip()
+            md = (req.llm_model or lf_llm.LLM_MODEL or "").strip()
+            if not bu or not md:
+                yield _sse({"type": "error", "content": "使用自带 API 时需同时提供可用的 llm_base_url 与 llm_model（或已在服务端配置默认 LLM_BASE_URL / LLM_MODEL）。"})
+                yield _sse({"type": "done"})
+                return
+            token = lf_llm.set_request_llm(OpenAICompatibleSDK(base_url=bu, model=md, api_key=key))
 
         progress_q: asyncio.Queue[str] = asyncio.Queue()
 
@@ -69,8 +105,10 @@ async def chat(req: ChatRequest):
             yield _sse({"type": "error", "content": str(e)})
             yield _sse({"type": "done"})
         finally:
-            if not task.done():
+            if task is not None and not task.done():
                 task.cancel()
+            if token is not None:
+                lf_llm.reset_request_llm(token)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 
