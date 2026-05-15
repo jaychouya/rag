@@ -28,8 +28,8 @@ def _sse(data: dict) -> str:
 
 
 def _client_llm_required() -> bool:
-    v = os.getenv("LAW_CHAT_CLIENT_LLM_REQUIRED", "").strip().lower()
-    return v in ("1", "true", "yes", "on")
+    v = os.getenv("LAW_CHAT_CLIENT_LLM_REQUIRED", "true").strip().lower()
+    return v not in ("0", "false", "no", "off")
 
 
 def _ts() -> str:
@@ -45,7 +45,7 @@ async def chat(req: ChatRequest):
             yield _sse(
                 {
                     "type": "error",
-                    "content": "请在前端填写 llm_api_key、llm_base_url、llm_model 后再提问。",
+                    "content": "本服务不会使用服务端 Token。请在前端填写你自己的 llm_api_key、llm_base_url、llm_model 后再提问。",
                 }
             )
             yield _sse({"type": "done"})
@@ -62,25 +62,14 @@ async def chat(req: ChatRequest):
         mode = (req.mode or os.getenv("LAW_FINDER_MODE", "fast")).strip().lower()
         _mode_override.set(mode)
 
-        token = None
-        if key:
-            bu = (req.llm_base_url or lf_llm.LLM_BASE_URL or "").strip()
-            md = (req.llm_model or lf_llm.LLM_MODEL or "").strip()
-            if not bu or not md:
-                yield _sse({"type": "error", "content": "填写了 API Key 时，请同时填写 llm_base_url 与 llm_model（或联系管理员配置服务端默认地址）。"})
-                yield _sse({"type": "done"})
-                return
-            llm_src = f"客户端 LLM | {bu} | {md}"
-            token = lf_llm.set_request_llm(OpenAICompatibleSDK(base_url=bu, model=md, api_key=key))
-        else:
-            bu = (lf_llm.LLM_BASE_URL or "").strip()
-            md = (lf_llm.LLM_MODEL or "").strip()
-            srv_key = (lf_llm.LLM_API_KEY or "").strip()
-            if not srv_key or not bu or not md:
-                yield _sse({"type": "error", "content": "未填写 LLM 配置且服务端未配置 LLM_API_KEY / LLM_BASE_URL / LLM_MODEL。"})
-                yield _sse({"type": "done"})
-                return
-            llm_src = f"服务端 LLM | {bu} | {md}"
+        bu = (req.llm_base_url or lf_llm.LLM_BASE_URL or "").strip()
+        md = (req.llm_model or lf_llm.LLM_MODEL or "").strip()
+        if not bu or not md:
+            yield _sse({"type": "error", "content": "请填写 llm_base_url 与 llm_model（可与 Key 一起保存在前端）。"})
+            yield _sse({"type": "done"})
+            return
+        llm_src = f"仅使用你的 Key | {bu} | {md}"
+        token = lf_llm.set_request_llm(OpenAICompatibleSDK(base_url=bu, model=md, api_key=key))
 
         def dbg(msg: str) -> Optional[str]:
             if not show_debug:

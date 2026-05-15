@@ -62,8 +62,8 @@ header h1{font-size:18px;font-weight:600}
     <div id="chat"></div>
     <div id="input-area">
       <details id="llm-config" open>
-        <summary>测试用 LLM（选填，测试者自行填写）</summary>
-        <p class="llm-hint">不填则使用服务器 .env 里的 LLM；填写后仅用你的 Key，保存在本浏览器。</p>
+        <summary>LLM 配置（必填，用你自己的 Key）</summary>
+        <p class="llm-hint">本站不消耗服务端 Token。未填 Key 不会发起对话；检索与总结均走你填写的 API。</p>
         <div class="llm-grid">
           <div><label>llm_api_key</label><input type="password" id="apiKey" autocomplete="off" placeholder="选填"/></div>
           <div><label>llm_base_url</label><input type="text" id="apiBase" placeholder="选填"/></div>
