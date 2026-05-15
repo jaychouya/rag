@@ -448,6 +448,10 @@ async def _case_match_enhanced(
         if k in article_diag:
             run_metrics[k] = article_diag[k]
     logger.info("law_match_metrics %s", json.dumps(run_metrics, ensure_ascii=False, default=str))
+    if progressCallback and run_metrics:
+        progressCallback(
+            "[运行指标]\n" + json.dumps(run_metrics, ensure_ascii=False, indent=2, default=str)
+        )
     return result
 
 
@@ -480,6 +484,8 @@ async def auto_query(
             code_extractor = CodeExtractor(llm=LLMSDK, max_retry=2, call_timeout=45.0)
             types_result = await code_extractor.do(message=query, system_message=system_prompt)
         question_type = QuestionType(types_result["type"])
+    if progressCallback:
+        progressCallback(f"[问题类型] {question_type.value}")
     query_result = None
     if question_type == QuestionType.LAW_DETAIL:
         with timed_stage("auto_query_law_detail"):

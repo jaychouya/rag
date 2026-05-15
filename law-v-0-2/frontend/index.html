@@ -1,59 +1,119 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>法规检索测试</title>
+<title>娉曡妫€绱㈡祴璇?/title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#f5f6fa;--card:#fff;--primary:#4f6ef7;--primary-hover:#3b5de7;--text:#1a1a2e;--muted:#6b7280;--border:#e5e7eb;--progress-bg:#f0f4ff;--answer-bg:#fff;--error-bg:#fef2f2}
+:root{--bg:#f5f6fa;--card:#fff;--primary:#4f6ef7;--primary-hover:#3b5de7;--text:#1a1a2e;--muted:#6b7280;--border:#e5e7eb;--progress-bg:#f0f4ff;--answer-bg:#fff;--error-bg:#fef2f2;--debug-bg:#1e1e2e;--debug-fg:#a5f3b4}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
-header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px;flex-shrink:0;flex-wrap:wrap}
 header h1{font-size:18px;font-weight:600}
-.mode-sel{display:flex;gap:4px;margin-left:auto}
-.mode-sel button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;font-size:13px;transition:.15s}
+.mode-sel{display:flex;gap:4px}
+.mode-sel button{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;font-size:13px}
 .mode-sel button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
-.mode-sel button:hover:not(.active){background:#f0f4ff}
+#main{flex:1;display:flex;min-height:0}
+#chat-col{flex:1;display:flex;flex-direction:column;min-width:0}
 #chat{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+#debug-panel{width:380px;max-width:42vw;background:var(--debug-bg);color:#e5e7eb;display:flex;flex-direction:column;border-left:1px solid #333;flex-shrink:0}
+#debug-panel.hidden{display:none}
+#debug-head{padding:10px 14px;border-bottom:1px solid #333;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+#debug-log{flex:1;overflow-y:auto;padding:10px 12px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.debug-line{margin-bottom:6px}
+.debug-line .ts{color:#94a3b8;margin-right:6px}
+.debug-line.progress{color:#93c5fd}
+.debug-line.debug{color:var(--debug-fg)}
+.debug-line.error{color:#fca5a5}
+.debug-line.metrics{color:#fde68a}
 .msg{max-width:780px;width:100%;margin:0 auto;border-radius:10px;padding:14px 18px;line-height:1.7;white-space:pre-wrap;word-break:break-word;font-size:14px}
 .msg.user{background:var(--primary);color:#fff;align-self:flex-end;border-bottom-right-radius:2px}
 .msg.progress{background:var(--progress-bg);color:var(--muted);font-size:13px;border-left:3px solid var(--primary)}
-.msg.answer{background:var(--answer-bg);border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.msg.answer{background:var(--answer-bg);border:1px solid var(--border)}
 .msg.error{background:var(--error-bg);color:#dc2626;border-left:3px solid #dc2626}
-.msg.answer :first-child{margin-top:0}
 #input-area{background:var(--card);border-top:1px solid var(--border);padding:14px 24px;flex-shrink:0}
 #input-wrap{max-width:780px;margin:0 auto;display:flex;gap:10px}
-#query{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;resize:none;height:44px;font-family:inherit;outline:none;transition:.15s}
-#query:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,110,247,.12)}
-#send{padding:0 22px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;transition:.15s;white-space:nowrap}
-#send:hover{background:var(--primary-hover)}
-#send:disabled{opacity:.5;cursor:not-allowed}
-.typing{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--primary);animation:blink 1.2s infinite;margin-left:4px}
-@keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+#query{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;resize:none;height:44px;font-family:inherit;outline:none}
+#send{padding:0 22px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer}
+#send:disabled{opacity:.5}
+#llm-config{max-width:780px;margin:10px auto 0;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbff}
+#llm-config summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+.llm-grid{display:grid;gap:8px;margin-top:10px}
+.llm-grid label{font-size:12px;color:var(--muted);display:block;margin-bottom:2px}
+.llm-grid input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px}
+.llm-actions{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+.llm-actions button{font-size:12px;padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);cursor:pointer}
+header .hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+header .hdr-right label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer}
 </style>
 </head>
 <body>
 <header>
-  <h1>法规检索测试</h1>
+  <h1>娉曡妫€绱㈡祴璇?/h1>
   <div class="mode-sel">
-    <button data-mode="original">原始</button>
-    <button data-mode="fast" class="active">极速</button>
-    <button data-mode="expert">专家</button>
+    <button data-mode="original">鍘熷</button>
+    <button data-mode="fast" class="active">鏋侀€?/button>
+    <button data-mode="expert">涓撳</button>
+  </div>
+  <div class="hdr-right">
+    <label><input type="checkbox" id="showDebug" checked> 杩愯杩囩▼</label>
   </div>
 </header>
-<div id="chat"></div>
-<div id="input-area">
-  <div id="input-wrap">
-    <textarea id="query" placeholder="描述你的案件或法规问题…" rows="1"></textarea>
-    <button id="send">发送</button>
+<div id="main">
+  <div id="chat-col">
+    <div id="chat"></div>
+    <div id="input-area">
+      <details id="llm-config" open>
+        <summary>LLM 閰嶇疆锛堜粎瀛樻湰娴忚鍣紝闅忚姹傚彂閫侊級</summary>
+        <div class="llm-grid">
+          <div><label>API Key / Secret</label><input type="password" id="apiKey" autocomplete="off" placeholder="sk-..."/></div>
+          <div><label>Base URL</label><input type="text" id="apiBase" placeholder="https://api.openai.com/v1"/></div>
+          <div><label>Model</label><input type="text" id="apiModel" placeholder="gpt-4o-mini"/></div>
+        </div>
+        <div class="llm-actions">
+          <button type="button" id="saveLlm">淇濆瓨鍒版湰鍦?/button>
+          <button type="button" id="clearLlm">娓呴櫎</button>
+        </div>
+      </details>
+      <div id="input-wrap" style="margin-top:10px">
+        <textarea id="query" placeholder="鎻忚堪妗堜欢鎴栨硶瑙勯棶棰樷€? rows="1"></textarea>
+        <button id="send">鍙戦€?/button>
+      </div>
+    </div>
   </div>
-  <div id="llm-row" style="max-width:780px;margin:10px auto 0">
-    <input type="password" id="apiKey" placeholder="自有 LLM API Key（远端若开启「仅自带 Key」则必填）" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px"/>
-  </div>
+  <aside id="debug-panel">
+    <div id="debug-head"><span>杩愯杩囩▼</span><button type="button" id="clearDebug" style="font-size:11px;padding:2px 8px;border:1px solid #555;background:transparent;color:#ccc;border-radius:4px;cursor:pointer">娓呯┖</button></div>
+    <div id="debug-log"></div>
+  </aside>
 </div>
 <script>
+const LS={key:'law_llm_key',base:'law_llm_base',model:'law_llm_model'};
 const chat=document.getElementById('chat'),queryEl=document.getElementById('query'),sendBtn=document.getElementById('send');
+const debugLog=document.getElementById('debug-log'),debugPanel=document.getElementById('debug-panel');
 let mode='fast',busy=false;
+
+function loadLlm(){
+  document.getElementById('apiKey').value=localStorage.getItem(LS.key)||'';
+  document.getElementById('apiBase').value=localStorage.getItem(LS.base)||'';
+  document.getElementById('apiModel').value=localStorage.getItem(LS.model)||'';
+}
+function saveLlm(){
+  localStorage.setItem(LS.key,document.getElementById('apiKey').value.trim());
+  localStorage.setItem(LS.base,document.getElementById('apiBase').value.trim());
+  localStorage.setItem(LS.model,document.getElementById('apiModel').value.trim());
+  appendDebug('debug','宸蹭繚瀛?LLM 閰嶇疆鍒?localStorage');
+}
+function clearLlm(){
+  [LS.key,LS.base,LS.model].forEach(k=>localStorage.removeItem(k));
+  document.getElementById('apiKey').value='';
+  document.getElementById('apiBase').value='';
+  document.getElementById('apiModel').value='';
+}
+loadLlm();
+document.getElementById('saveLlm').onclick=saveLlm;
+document.getElementById('clearLlm').onclick=clearLlm;
+document.getElementById('showDebug').onchange=e=>{debugPanel.classList.toggle('hidden',!e.target.checked)};
+document.getElementById('clearDebug').onclick=()=>{debugLog.innerHTML=''};
 
 document.querySelectorAll('.mode-sel button').forEach(b=>{
   b.onclick=()=>{
@@ -64,8 +124,15 @@ document.querySelectorAll('.mode-sel button').forEach(b=>{
   };
 });
 
-queryEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend()}});
-sendBtn.onclick=doSend;
+function ts(){return new Date().toLocaleTimeString('zh-CN',{hour12:false})}
+function appendDebug(kind,text){
+  const d=document.createElement('div');
+  d.className='debug-line '+kind;
+  d.innerHTML='<span class="ts">'+ts()+'</span>'+escapeHtml(text);
+  debugLog.appendChild(d);
+  debugLog.scrollTop=debugLog.scrollHeight;
+}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
 function addMsg(cls,text){
   const d=document.createElement('div');
@@ -76,22 +143,29 @@ function addMsg(cls,text){
   return d;
 }
 
+queryEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend()}});
+sendBtn.onclick=doSend;
+
 async function doSend(){
   const q=queryEl.value.trim();
   if(!q||busy)return;
+  const k=document.getElementById('apiKey').value.trim();
+  const b=document.getElementById('apiBase').value.trim();
+  const m=document.getElementById('apiModel').value.trim();
+  if(!k){addMsg('error','璇峰厛鍦?LLM 閰嶇疆涓～鍐?API Key');return}
+  if(!b||!m){addMsg('error','璇峰～鍐?Base URL 鍜?Model');return}
+
   busy=true;sendBtn.disabled=true;queryEl.value='';
   addMsg('user',q);
+  appendDebug('debug','璇锋眰寮€濮?mode='+mode);
   let progressEl=null,answerEl=null;
   try{
     const base=location.protocol==='file:'?'http://localhost:8000':'';
-    const body={query:q,mode};
-    const k=document.getElementById('apiKey').value.trim();
-    if(k)body.llm_api_key=k;
+    const body={query:q,mode,llm_api_key:k,llm_base_url:b,llm_model:m,show_debug:true};
     const res=await fetch(base+'/api/chat',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
     });
+    if(!res.ok){throw new Error('HTTP '+res.status)}
     const reader=res.body.getReader(),dec=new TextDecoder();
     let buf='';
     while(true){
@@ -102,21 +176,33 @@ async function doSend(){
       buf=lines.pop();
       for(const line of lines){
         if(!line.startsWith('data: '))continue;
-        const d=JSON.parse(line.slice(6));
-        if(d.type==='progress'){
+        let d;try{d=JSON.parse(line.slice(6))}catch{continue}
+        const t=d.type,c=d.content||'';
+        if(t==='progress'){
           if(!progressEl)progressEl=addMsg('progress','');
-          progressEl.textContent+=(progressEl.textContent?'\n':'')+d.content;
+          progressEl.textContent+=(progressEl.textContent?'\n':'')+c;
+          appendDebug('progress',c);
           chat.scrollTop=chat.scrollHeight;
-        }else if(d.type==='answer'){
+        }else if(t==='debug'){
+          appendDebug('debug',c);
+        }else if(t==='metrics'){
+          appendDebug('metrics',typeof c==='string'?c:JSON.stringify(c,null,2));
+        }else if(t==='answer'){
           if(!answerEl)answerEl=addMsg('answer','');
-          answerEl.textContent+=d.content;
+          answerEl.textContent+=c;
           chat.scrollTop=chat.scrollHeight;
-        }else if(d.type==='error'){
-          addMsg('error',d.content);
+        }else if(t==='error'){
+          addMsg('error',c);
+          appendDebug('error',c);
+        }else if(t==='done'){
+          appendDebug('debug','娴佺粨鏉?);
         }
       }
     }
-  }catch(e){addMsg('error','请求失败: '+e.message)}
+  }catch(e){
+    addMsg('error','璇锋眰澶辫触: '+e.message);
+    appendDebug('error',e.message);
+  }
   busy=false;sendBtn.disabled=false;queryEl.focus();
 }
 </script>

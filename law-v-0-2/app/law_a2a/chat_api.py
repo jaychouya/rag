@@ -2,8 +2,8 @@ import asyncio
 import json
 import logging
 import os
-import traceback
-from typing import Optional
+import time
+from typing import Any, Optional
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -20,6 +20,7 @@ class ChatRequest(BaseModel):
     llm_api_key: Optional[str] = None
     llm_base_url: Optional[str] = None
     llm_model: Optional[str] = None
+    show_debug: bool = True
 
 
 def _sse(data: dict) -> str:
@@ -31,20 +32,33 @@ def _client_llm_required() -> bool:
     return v in ("1", "true", "yes", "on")
 
 
+def _ts() -> str:
+    return time.strftime("%H:%M:%S")
+
+
 @router.post("/chat")
 async def chat(req: ChatRequest):
-    if _client_llm_required() and not (req.llm_api_key or "").strip():
+    key = (req.llm_api_key or "").strip()
+    if _client_llm_required() and not key:
 
         async def deny():
             yield _sse(
                 {
                     "type": "error",
-                    "content": "本服务未开放公用模型：请在请求中带上您自己的 llm_api_key，或在部署端关闭环境变量 LAW_CHAT_CLIENT_LLM_REQUIRED。",
+                    "content": "请在前端填写 llm_api_key、llm_base_url、llm_model 后再提问。",
                 }
             )
             yield _sse({"type": "done"})
 
         return StreamingResponse(deny(), media_type="text/event-stream")
+
+    if not key:
+
+        async def no_key():
+            yield _sse({"type": "error", "content": "缺少 API Key：请在前端 LLM 配置中填写。"})
+            yield _sse({"type": "done"})
+
+        return StreamingResponse(no_key(), media_type="text/event-stream")
 
     async def stream():
         from law_compat.openai_sdk import OpenAICompatibleSDK
@@ -52,63 +66,92 @@ async def chat(req: ChatRequest):
         from law_finder import llm as lf_llm
         from law_finder.llm import LLMSDK
 
-        if req.mode:
-            _mode_override.set(req.mode.strip().lower())
+        show_debug = req.show_debug
+        mode = (req.mode or os.getenv("LAW_FINDER_MODE", "fast")).strip().lower()
+        _mode_override.set(mode)
 
-        token = None
-        task = None
-        key = (req.llm_api_key or "").strip()
-        if key:
-            bu = (req.llm_base_url or lf_llm.LLM_BASE_URL or "").strip()
-            md = (req.llm_model or lf_llm.LLM_MODEL or "").strip()
-            if not bu or not md:
-                yield _sse({"type": "error", "content": "使用自带 API 时服务端未配置 LLM_BASE_URL / LLM_MODEL，请联系部署方。"})
-                yield _sse({"type": "done"})
-                return
-            token = lf_llm.set_request_llm(OpenAICompatibleSDK(base_url=bu, model=md, api_key=key))
+        bu = (req.llm_base_url or lf_llm.LLM_BASE_URL or "").strip()
+        md = (req.llm_model or lf_llm.LLM_MODEL or "").strip()
+        if not bu or not md:
+            yield _sse({"type": "error", "content": "请填写 llm_base_url 与 llm_model。"})
+            yield _sse({"type": "done"})
+            return
 
-        progress_q: asyncio.Queue[str] = asyncio.Queue()
+        def dbg(msg: str) -> Optional[str]:
+            if not show_debug:
+                return None
+            return _sse({"type": "debug", "content": f"[{_ts()}] {msg}"})
+
+        if (line := dbg(f"模式={mode} | LLM={bu} | model={md} | key=***{key[-4:] if len(key) >= 4 else '****'}")):
+            yield line
+        token = lf_llm.set_request_llm(OpenAICompatibleSDK(base_url=bu, model=md, api_key=key))
+
+        progress_q: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
 
         def cb(msg: str):
-            progress_q.put_nowait(msg.rstrip("\n"))
+            progress_q.put_nowait(("progress", msg.rstrip("\n")))
 
-        task = asyncio.create_task(
-            auto_query(
-                req.query,
-                category_scope=req.category_scope or None,
-                law_tags=req.law_tags or None,
-                progressCallback=cb,
-            )
-        )
-
-        _HEARTBEAT_INTERVAL = 15
+        task: Optional[asyncio.Task] = None
         try:
+            if (line := dbg("开始 auto_query（检索流水线）")):
+                yield line
+            task = asyncio.create_task(
+                auto_query(
+                    req.query,
+                    category_scope=req.category_scope or None,
+                    law_tags=req.law_tags or None,
+                    progressCallback=cb,
+                )
+            )
+
+            _HEARTBEAT_INTERVAL = 15
             while not task.done():
                 try:
-                    item = await asyncio.wait_for(progress_q.get(), timeout=_HEARTBEAT_INTERVAL)
-                    yield _sse({"type": "progress", "content": item})
+                    kind, item = await asyncio.wait_for(progress_q.get(), timeout=_HEARTBEAT_INTERVAL)
+                    if kind == "progress":
+                        yield _sse({"type": "progress", "content": item})
                 except asyncio.TimeoutError:
                     yield ": heartbeat\n\n"
+
             while not progress_q.empty():
-                yield _sse({"type": "progress", "content": progress_q.get_nowait()})
+                kind, item = progress_q.get_nowait()
+                if kind == "progress":
+                    yield _sse({"type": "progress", "content": item})
 
-            result, question_type = task.result()
+            raw = task.result()
+            if isinstance(raw, str):
+                yield _sse({"type": "error", "content": raw})
+                yield _sse({"type": "done"})
+                return
 
+            result, question_type = raw
+            qt = question_type.value if hasattr(question_type, "value") else str(question_type)
+            if (line := dbg(f"问题类型={qt} | 结果条数={len(result) if isinstance(result, list) else 'n/a'}")):
+                yield line
+            if isinstance(result, list) and show_debug:
+                preview = [{"name": (x.get("name") or x.get("docName") or str(x))[:80]} for x in result[:8]]
+                yield _sse({"type": "metrics", "content": json.dumps({"question_type": qt, "result_count": len(result), "preview": preview}, ensure_ascii=False, indent=2)})
+
+            if (line := dbg("开始流式总结（LLM）")):
+                yield line
             prompt = get_summary_law_result_prompt(result=result, question=req.query, question_type=question_type)
             async for chunk in LLMSDK.chat_streaming(req.query, prompt):
                 yield _sse({"type": "answer", "content": chunk})
 
+            if (line := dbg("完成")):
+                yield line
             yield _sse({"type": "done"})
         except Exception as e:
-            import traceback as _tb
-            logging.getLogger(__name__).error("chat error: %s", _tb.format_exc())
+            logging.getLogger(__name__).exception("chat error")
             yield _sse({"type": "error", "content": str(e)})
+            if show_debug:
+                import traceback as _tb
+                yield _sse({"type": "debug", "content": _tb.format_exc()[-2000:]})
             yield _sse({"type": "done"})
         finally:
             if task is not None and not task.done():
                 task.cancel()
-            if token is not None:
-                lf_llm.reset_request_llm(token)
+            lf_llm.reset_request_llm(token)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 
