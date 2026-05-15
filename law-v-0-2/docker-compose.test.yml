@@ -10,7 +10,7 @@ services:
       SERVER_PORT: "8000"
       A2A_SERVER_PORT: "8000"
       LLM_BASE_URL: ${LLM_BASE_URL}
-      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_API_KEY: ""
       LLM_MODEL: ${LLM_MODEL}
       AGENT_NAME: ${AGENT_NAME:-a2a_law_agent}
       AGENT_VERSION: ${AGENT_VERSION:-1.0.0}

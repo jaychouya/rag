@@ -39,13 +39,13 @@ def _ts() -> str:
 @router.post("/chat")
 async def chat(req: ChatRequest):
     key = (req.llm_api_key or "").strip()
-    if _client_llm_required() and not key:
+    if not key:
 
         async def deny():
             yield _sse(
                 {
                     "type": "error",
-                    "content": "本服务不会使用服务端 Token。请在前端填写你自己的 llm_api_key、llm_base_url、llm_model 后再提问。",
+                    "content": "远程服务不会使用服务端 API Key。请在前端填写你自己的 llm_api_key、llm_base_url、llm_model。",
                 }
             )
             yield _sse({"type": "done"})
