@@ -52,14 +52,6 @@ async def chat(req: ChatRequest):
 
         return StreamingResponse(deny(), media_type="text/event-stream")
 
-    if not key:
-
-        async def no_key():
-            yield _sse({"type": "error", "content": "缺少 API Key：请在前端 LLM 配置中填写。"})
-            yield _sse({"type": "done"})
-
-        return StreamingResponse(no_key(), media_type="text/event-stream")
-
     async def stream():
         from law_compat.openai_sdk import OpenAICompatibleSDK
         from law_finder.finder import _mode_override, auto_query, get_summary_law_result_prompt
@@ -70,21 +62,33 @@ async def chat(req: ChatRequest):
         mode = (req.mode or os.getenv("LAW_FINDER_MODE", "fast")).strip().lower()
         _mode_override.set(mode)
 
-        bu = (req.llm_base_url or lf_llm.LLM_BASE_URL or "").strip()
-        md = (req.llm_model or lf_llm.LLM_MODEL or "").strip()
-        if not bu or not md:
-            yield _sse({"type": "error", "content": "请填写 llm_base_url 与 llm_model。"})
-            yield _sse({"type": "done"})
-            return
+        token = None
+        if key:
+            bu = (req.llm_base_url or lf_llm.LLM_BASE_URL or "").strip()
+            md = (req.llm_model or lf_llm.LLM_MODEL or "").strip()
+            if not bu or not md:
+                yield _sse({"type": "error", "content": "填写了 API Key 时，请同时填写 llm_base_url 与 llm_model（或联系管理员配置服务端默认地址）。"})
+                yield _sse({"type": "done"})
+                return
+            llm_src = f"客户端 LLM | {bu} | {md}"
+            token = lf_llm.set_request_llm(OpenAICompatibleSDK(base_url=bu, model=md, api_key=key))
+        else:
+            bu = (lf_llm.LLM_BASE_URL or "").strip()
+            md = (lf_llm.LLM_MODEL or "").strip()
+            srv_key = (lf_llm.LLM_API_KEY or "").strip()
+            if not srv_key or not bu or not md:
+                yield _sse({"type": "error", "content": "未填写 LLM 配置且服务端未配置 LLM_API_KEY / LLM_BASE_URL / LLM_MODEL。"})
+                yield _sse({"type": "done"})
+                return
+            llm_src = f"服务端 LLM | {bu} | {md}"
 
         def dbg(msg: str) -> Optional[str]:
             if not show_debug:
                 return None
             return _sse({"type": "debug", "content": f"[{_ts()}] {msg}"})
 
-        if (line := dbg(f"模式={mode} | LLM={bu} | model={md} | key=***{key[-4:] if len(key) >= 4 else '****'}")):
+        if (line := dbg(f"模式={mode} | {llm_src}")):
             yield line
-        token = lf_llm.set_request_llm(OpenAICompatibleSDK(base_url=bu, model=md, api_key=key))
 
         progress_q: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
 
@@ -151,7 +155,8 @@ async def chat(req: ChatRequest):
         finally:
             if task is not None and not task.done():
                 task.cancel()
-            lf_llm.reset_request_llm(token)
+            if token is not None:
+                lf_llm.reset_request_llm(token)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 
