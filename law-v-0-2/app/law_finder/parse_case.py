@@ -7,15 +7,16 @@ from law_finder.myextractor import CodeExtractor
 from .llm import LLMSDK
 
 
-# 根据用户需求分析要素
-def parse_case(case, findingMessageCallback: Optional[Callable[[str], None]] = None) -> Optional[dict]:
+async def parse_case(case, findingMessageCallback: Optional[Callable[[str], None]] = None) -> Optional[dict]:
+    _ = findingMessageCallback
     extract_sevice = CodeExtractor(
         llm=LLMSDK,
         title="parse_case",
+        max_retry=2,
+        call_timeout=90.0,
     )
     message = get_template("parse_case.jinja2").render({"case": case})
-
-    ret = extract_sevice.do_sync(message=message)
+    ret = await extract_sevice.do(message=message)
     if not isinstance(ret, dict):
         return None
     return ret

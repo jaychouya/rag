@@ -39,7 +39,7 @@ async def chat(req: ChatRequest):
             yield _sse(
                 {
                     "type": "error",
-                    "content": "本服务未开放公用模型：请在请求中带上您自己的 llm_api_key（及可选的 llm_base_url、llm_model），或在部署端关闭环境变量 LAW_CHAT_CLIENT_LLM_REQUIRED。",
+                    "content": "本服务未开放公用模型：请在请求中带上您自己的 llm_api_key，或在部署端关闭环境变量 LAW_CHAT_CLIENT_LLM_REQUIRED。",
                 }
             )
             yield _sse({"type": "done"})
@@ -62,7 +62,7 @@ async def chat(req: ChatRequest):
             bu = (req.llm_base_url or lf_llm.LLM_BASE_URL or "").strip()
             md = (req.llm_model or lf_llm.LLM_MODEL or "").strip()
             if not bu or not md:
-                yield _sse({"type": "error", "content": "使用自带 API 时需同时提供可用的 llm_base_url 与 llm_model（或已在服务端配置默认 LLM_BASE_URL / LLM_MODEL）。"})
+                yield _sse({"type": "error", "content": "使用自带 API 时服务端未配置 LLM_BASE_URL / LLM_MODEL，请联系部署方。"})
                 yield _sse({"type": "done"})
                 return
             token = lf_llm.set_request_llm(OpenAICompatibleSDK(base_url=bu, model=md, api_key=key))

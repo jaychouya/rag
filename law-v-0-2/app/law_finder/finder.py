@@ -1,7 +1,9 @@
+import asyncio
 import contextvars
 import json
 import logging
 import os
+import re
 from enum import Enum
 from typing import Any, Callable, Optional
 
@@ -30,7 +32,25 @@ _RETRIEVAL_LIMIT = int(os.getenv("LAW_FINDER_RETRIEVAL_LIMIT", "80"))
 
 
 def env_max_llm_threads() -> int:
-    return int(os.getenv("LAW_FINDER_MAX_LLM_THREADS", "16"))
+    base = int(os.getenv("LAW_FINDER_MAX_LLM_THREADS", "16"))
+    if _finder_mode() == "fast":
+        return int(os.getenv("LAW_FINDER_FAST_MAX_LLM_THREADS", str(min(base + 4, 24))))
+    return base
+
+
+def _fast_skip_classify() -> bool:
+    return os.getenv("LAW_FINDER_FAST_SKIP_CLASSIFY", "1").strip().lower() in ("1", "true", "yes")
+
+
+def _fast_classify_heuristic(query: str) -> Optional[QuestionType]:
+    q = query.strip()
+    if not q:
+        return None
+    if re.search(r"(列出|全部法律|有哪些法|法律清单|法规列表)", q):
+        return QuestionType.LAW_LIST
+    if re.search(r"第[一二三四五六七八九十百千万\d]+条", q) or ("《" in q and "》" in q):
+        return QuestionType.LAW_DETAIL
+    return QuestionType.LAW_MATCH
 
 
 def _finder_mode() -> str:
@@ -131,7 +151,7 @@ async def query_law_by_case_info(
     if not query:
         raise ValueError("案件描述不能为空")
     progressCallback(f"正在分析您描述的案件信息...") if progressCallback else None
-    case_info = parse_case(case=query, findingMessageCallback=progressCallback)
+    case_info = await parse_case(case=query, findingMessageCallback=progressCallback)
     if not case_info:
         raise ValueError("未能提取案件信息，请检查案件描述是否符合要求")
 
@@ -287,19 +307,16 @@ async def _case_match_enhanced(
     if _petition_mode_on():
         merged_category_scope = list({*(merged_category_scope or []), *_petition_scope_types()})
 
-    wiki_hits, wiki_ids = await petition_wiki_scan(kw_text)
-    if wiki_hits and progressCallback:
-        progressCallback(
-            "【信访知识库】命中："
-            + "、".join(h.get("title") or h.get("slug", "") for h in wiki_hits[:5])
-            + "\n"
-        )
+    wiki_task = asyncio.create_task(petition_wiki_scan(kw_text))
+    wiki_hits: list = []
+    wiki_ids: list[int] = []
 
     laws = []
     lawids = []
     run_metrics: dict[str, Any] = {}
     article_diag: dict[str, Any] = {}
     if law_scopes[1]:
+        wiki_hits, wiki_ids = await wiki_task
         lawids = list(set([law["id"] for law in law_scopes[1]]))
     else:
         with timed_stage("law_match_category_law_llm"):
@@ -322,11 +339,18 @@ async def _case_match_enhanced(
                 cat_ids = [c["id"] for c in categories]
             _ret_lim = _RETRIEVAL_LIMIT
             if not force_legacy:
-                _ret_lim = min(_ret_lim, int(os.getenv("LAW_FINDER_FAST_RETRIEVAL_LIMIT", "52")))
+                _ret_lim = min(_ret_lim, int(os.getenv("LAW_FINDER_FAST_RETRIEVAL_LIMIT", "45")))
             retrieval_ids = await try_search_document_ids(
                 case_prompt, law_tags=merged_law_tags or None, category_ids=cat_ids or None,
                 limit=_ret_lim, direct_keywords=ci_kws_list,
             )
+            wiki_hits, wiki_ids = await wiki_task
+            if wiki_hits and progressCallback:
+                progressCallback(
+                    "【信访知识库】命中："
+                    + "、".join(h.get("title") or h.get("slug", "") for h in wiki_hits[:5])
+                    + "\n"
+                )
             fts_count = len(retrieval_ids) if retrieval_ids else 0
             if fast_direct and fts_count > 0:
                 struct_ids: list[int] = []
@@ -355,7 +379,7 @@ async def _case_match_enhanced(
                     message += f"+ {category['name']}\n"
                 message += f"\n将继续为您查找相关的法规内容，请稍后...\n"
                 progressCallback(message)
-            _FTS_SKIP_THRESHOLD = int(os.getenv("LAW_FINDER_FTS_SKIP_THRESHOLD", "18"))
+            _FTS_SKIP_THRESHOLD = int(os.getenv("LAW_FINDER_FTS_SKIP_THRESHOLD", "24"))
             if retrieval_ids and 0 < len(retrieval_ids) <= _FTS_SKIP_THRESHOLD:
                 logger.info("fast-path: FTS returned %s ids, skipping find_laws LLM", len(retrieval_ids))
                 run_metrics["find_laws_skipped"] = True
@@ -390,7 +414,7 @@ async def _case_match_enhanced(
     progressCallback(messages) if progressCallback else None
 
     if not force_legacy:
-        _MAX_ARTICLE_LAWS = int(os.getenv("LAW_FINDER_FAST_MAX_ARTICLE_LAWS", "12"))
+        _MAX_ARTICLE_LAWS = int(os.getenv("LAW_FINDER_FAST_MAX_ARTICLE_LAWS", "10"))
     else:
         _MAX_ARTICLE_LAWS = int(os.getenv("LAW_FINDER_MAX_ARTICLE_LAWS", "20"))
     if len(laws) > _MAX_ARTICLE_LAWS:
@@ -445,12 +469,18 @@ async def auto_query(
 ):
     if max_llm_threads is None:
         max_llm_threads = env_max_llm_threads()
-    with timed_stage("auto_query_classify"):
-        system_prompt = get_template("auto_classify.j2").render()
-        code_extractor = CodeExtractor(llm=LLMSDK)
-        types_result = await code_extractor.do(message=query, system_message=system_prompt)
+    question_type: Optional[QuestionType] = None
+    if _finder_mode() == "fast" and _fast_skip_classify():
+        question_type = _fast_classify_heuristic(query)
+        if question_type is not None:
+            logger.info("fast-path: heuristic classify -> %s", question_type.value)
+    if question_type is None:
+        with timed_stage("auto_query_classify"):
+            system_prompt = get_template("auto_classify.j2").render()
+            code_extractor = CodeExtractor(llm=LLMSDK, max_retry=2, call_timeout=45.0)
+            types_result = await code_extractor.do(message=query, system_message=system_prompt)
+        question_type = QuestionType(types_result["type"])
     query_result = None
-    question_type = QuestionType(types_result["type"])
     if question_type == QuestionType.LAW_DETAIL:
         with timed_stage("auto_query_law_detail"):
             query_result = await query_law_by_lawpath(query, category_scope, law_tags, max_llm_threads, progressCallback)

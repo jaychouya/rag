@@ -47,10 +47,8 @@ header h1{font-size:18px;font-weight:600}
     <textarea id="query" placeholder="描述你的案件或法规问题…" rows="1"></textarea>
     <button id="send">发送</button>
   </div>
-  <div id="llm-row" style="max-width:780px;margin:10px auto 0;display:flex;gap:8px;flex-wrap:wrap">
-    <input type="password" id="apiKey" placeholder="自有 LLM API Key（远端若开启「仅自带 Key」则必填）" style="flex:1;min-width:220px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px"/>
-    <input type="text" id="apiBase" placeholder="可选 Base URL" style="flex:1;min-width:160px;max-width:280px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px"/>
-    <input type="text" id="apiModel" placeholder="可选 Model" style="width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px"/>
+  <div id="llm-row" style="max-width:780px;margin:10px auto 0">
+    <input type="password" id="apiKey" placeholder="自有 LLM API Key（远端若开启「仅自带 Key」则必填）" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px"/>
   </div>
 </div>
 <script>
@@ -88,11 +86,7 @@ async function doSend(){
     const base=location.protocol==='file:'?'http://localhost:8000':'';
     const body={query:q,mode};
     const k=document.getElementById('apiKey').value.trim();
-    const b=document.getElementById('apiBase').value.trim();
-    const m=document.getElementById('apiModel').value.trim();
     if(k)body.llm_api_key=k;
-    if(b)body.llm_base_url=b;
-    if(m)body.llm_model=m;
     const res=await fetch(base+'/api/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json'},

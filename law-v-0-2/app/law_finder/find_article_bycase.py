@@ -24,7 +24,8 @@ _J2_TOP = int(os.getenv("LAW_FINDER_J2_TOP", "20"))
 _J2_CONTENT_PREVIEW = int(os.getenv("LAW_FINDER_J2_CONTENT_PREVIEW", "4000"))
 
 
-def _content_preview(ref: dict) -> str:
+def _content_preview(ref: dict, preview_len: Optional[int] = None) -> str:
+    cap = preview_len if preview_len is not None else _J2_CONTENT_PREVIEW
     c = ref.get("content")
     if c is None:
         return ""
@@ -32,7 +33,7 @@ def _content_preview(ref: dict) -> str:
         s = json.dumps(c, ensure_ascii=False)
     else:
         s = str(c)
-    return s[:_J2_CONTENT_PREVIEW] if len(s) > _J2_CONTENT_PREVIEW else s
+    return s[:cap] if len(s) > cap else s
 
 
 _LEGACY_MAX_DEPTH = int(os.getenv("LAW_FINDER_LEGACY_MAX_DEPTH", "4"))
@@ -220,6 +221,7 @@ async def _find_article_async_two_stage(
     prefilter_cap: Optional[int] = None,
     j2_top_cap: Optional[int] = None,
     j1_merge_textlen: Optional[int] = None,
+    j2_content_preview: Optional[int] = None,
 ) -> list[dict]:
     _ = extra_prompt
     flat = flatten_law_children(lawparts)
@@ -326,7 +328,7 @@ async def _find_article_async_two_stage(
                 "pathname": flat[idx]["pathname"],
                 "parent_pathname": flat[idx].get("parent_pathname", ""),
                 "summary": flat[idx]["summary"],
-                "content_preview": _content_preview(ref) if ref.get("content") else "",
+                "content_preview": _content_preview(ref, j2_content_preview) if ref.get("content") else "",
             }
         )
 
@@ -413,9 +415,10 @@ async def _find_article_async(
         )
     kw: dict[str, Any] = {}
     if fast_pipeline:
-        kw["prefilter_cap"] = int(os.getenv("LAW_FINDER_FAST_NODE_PREFILTER", "40"))
-        kw["j2_top_cap"] = int(os.getenv("LAW_FINDER_FAST_J2_TOP", "10"))
-        kw["j1_merge_textlen"] = int(os.getenv("LAW_FINDER_FAST_J1_MAX_TEXT", "8000"))
+        kw["prefilter_cap"] = int(os.getenv("LAW_FINDER_FAST_NODE_PREFILTER", "32"))
+        kw["j2_top_cap"] = int(os.getenv("LAW_FINDER_FAST_J2_TOP", "8"))
+        kw["j1_merge_textlen"] = int(os.getenv("LAW_FINDER_FAST_J1_MAX_TEXT", "7500"))
+        kw["j2_content_preview"] = int(os.getenv("LAW_FINDER_FAST_J2_CONTENT_PREVIEW", "2400"))
     return await _find_article_async_two_stage(
         case,
         docName,
@@ -449,7 +452,7 @@ async def find_article(
         call_timeout=120.0 if is_fast else None,
     )
     j1_batch = (
-        int(os.getenv("LAW_FINDER_FAST_J1_BATCH", "30"))
+        int(os.getenv("LAW_FINDER_FAST_J1_BATCH", "36"))
         if is_fast
         else int(os.getenv("LAW_FINDER_ARTICLE_BATCH", "20"))
     )
