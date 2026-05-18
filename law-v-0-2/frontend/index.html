@@ -34,7 +34,7 @@ header h1{font-size:18px;font-weight:600}
 .msg.error{background:var(--error-bg);color:#dc2626}
 #input-area{background:var(--card);border-top:1px solid var(--border);padding:14px 24px}
 #input-wrap{max-width:780px;margin:0 auto;display:flex;gap:10px}
-#query{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;height:44px;font-family:inherit}
+#query{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;min-height:44px;max-height:120px;font-family:inherit;resize:vertical}
 #send{padding:0 22px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer}
 #send:disabled{opacity:.5}
 #llm-config{max-width:780px;margin:10px auto 0;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbff}
@@ -153,7 +153,7 @@ async function doSend(){
   if(!q||busy)return;
   var k=apiKey.value.trim(),b=apiBase.value.trim(),m=apiModel.value.trim();
   if(!k||!b||!m){addMsg('error','请填写 llm_api_key、llm_base_url、llm_model 后再发送。');return;}
-  busy=true;sendBtn.disabled=true;queryEl.value='';
+  busy=true;sendBtn.disabled=true;
   addMsg('user',q);
   var progressEl=null,answerEl=null;
   try{
@@ -182,7 +182,7 @@ async function doSend(){
       }
     }
   }catch(e){addMsg('error','请求失败: '+e.message);}
-  busy=false;sendBtn.disabled=false;queryEl.focus();
+  finally{queryEl.value='';busy=false;sendBtn.disabled=false;queryEl.focus();}
 }
 queryEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend();}});
 sendBtn.onclick=doSend;

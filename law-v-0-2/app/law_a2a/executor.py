@@ -74,6 +74,7 @@ class LawA2AgentExecutor(AgentExecutor):
                     return
                 if key:
                     token = lf_llm.set_request_llm(make_client_sdk(key, bu, md))
+                    result_container["client_llm"] = (key, bu, md)
                 elif client_llm_required() or not (lf_llm.LLM_API_KEY or "").strip():
                     result_container["error"] = (
                         "A2A 请求须携带 metadata.llm_api_key / llm_base_url / llm_model，服务端不消耗所有者 Token。"
@@ -125,15 +126,26 @@ class LawA2AgentExecutor(AgentExecutor):
                     f"{result_container['error']} {result_container.get('traceback', '')}"
                 )
 
+            from law_a2a.client_llm_util import make_client_sdk
             from law_finder.finder import get_summary_law_result_prompt
+            from law_finder import llm as lf_llm
             from law_finder.llm import LLMSDK
 
             result, question_type = result_container["result"]
             prompt = get_summary_law_result_prompt(
                 result=result, question=userquery, question_type=question_type
             )
-            async for chunk in LLMSDK.chat_streaming(userquery, prompt):
-                await self._send_result(task, updater, chunk)
+            summary_token = None
+            client_llm = result_container.get("client_llm")
+            if client_llm:
+                ck, cbu, cmd = client_llm
+                summary_token = lf_llm.set_request_llm(make_client_sdk(ck, cbu, cmd))
+            try:
+                async for chunk in LLMSDK.chat_streaming(userquery, prompt):
+                    await self._send_result(task, updater, chunk)
+            finally:
+                if summary_token is not None:
+                    lf_llm.reset_request_llm(summary_token)
 
             await self._send_result(
                 task,

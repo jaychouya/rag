@@ -104,9 +104,14 @@ async def chat(req: ChatRequest):
             yield line
 
         progress_q: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
+        loop = asyncio.get_running_loop()
 
         def cb(msg: str):
-            progress_q.put_nowait(("progress", msg.rstrip("\n")))
+            item = ("progress", msg.rstrip("\n"))
+            try:
+                progress_q.put_nowait(item)
+            except Exception:
+                loop.call_soon_threadsafe(progress_q.put_nowait, item)
 
         task: Optional[asyncio.Task] = None
         try:

@@ -8,7 +8,8 @@ from .llm import LLMSDK
 
 
 async def parse_case(case, findingMessageCallback: Optional[Callable[[str], None]] = None) -> Optional[dict]:
-    _ = findingMessageCallback
+    if findingMessageCallback:
+        findingMessageCallback("正在分析案件信息...\n")
     extract_sevice = CodeExtractor(
         llm=LLMSDK,
         title="parse_case",
