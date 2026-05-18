@@ -151,6 +151,8 @@ function buildBody(q){
 async function doSend(){
   var q=queryEl.value.trim();
   if(!q||busy)return;
+  var k=apiKey.value.trim(),b=apiBase.value.trim(),m=apiModel.value.trim();
+  if(!k||!b||!m){addMsg('error','请填写 llm_api_key、llm_base_url、llm_model 后再发送。');return;}
   busy=true;sendBtn.disabled=true;queryEl.value='';
   addMsg('user',q);
   var progressEl=null,answerEl=null;

@@ -45,7 +45,41 @@ class LawA2AgentExecutor(AgentExecutor):
                 progress_queue.put(message.rstrip("\n") + "\n")
 
             def find_task():
+                from law_a2a.client_llm_util import (
+                    agent_dbg,
+                    client_llm_required,
+                    make_client_sdk,
+                    parse_client_llm_fields,
+                )
                 from law_finder.finder import auto_query
+                from law_finder import llm as lf_llm
+
+                token = None
+                key, bu, md, err = parse_client_llm_fields(
+                    m.get("llm_api_key"),
+                    m.get("llm_base_url"),
+                    m.get("llm_model"),
+                )
+                # #region agent log
+                agent_dbg(
+                    "H4",
+                    "executor.py:find_task",
+                    "a2a thread llm",
+                    {"has_key": bool(key), "err": err, "client_required": client_llm_required()},
+                )
+                # #endregion
+                if err and (client_llm_required() or m.get("llm_api_key")):
+                    result_container["error"] = err
+                    finished_event.set()
+                    return
+                if key:
+                    token = lf_llm.set_request_llm(make_client_sdk(key, bu, md))
+                elif client_llm_required() or not (lf_llm.LLM_API_KEY or "").strip():
+                    result_container["error"] = (
+                        "A2A 请求须携带 metadata.llm_api_key / llm_base_url / llm_model，服务端不消耗所有者 Token。"
+                    )
+                    finished_event.set()
+                    return
 
                 try:
                     result = asyncio.run(
@@ -60,6 +94,9 @@ class LawA2AgentExecutor(AgentExecutor):
                 except Exception as e:
                     result_container["error"] = str(e)
                     result_container["traceback"] = traceback.format_exc()
+                finally:
+                    if token is not None:
+                        lf_llm.reset_request_llm(token)
                 finished_event.set()
 
             law_thread = threading.Thread(target=find_task)
