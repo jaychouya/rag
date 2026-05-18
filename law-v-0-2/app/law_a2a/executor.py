@@ -46,7 +46,6 @@ class LawA2AgentExecutor(AgentExecutor):
 
             def find_task():
                 from law_a2a.client_llm_util import (
-                    agent_dbg,
                     client_llm_required,
                     make_client_sdk,
                     parse_client_llm_fields,
@@ -60,14 +59,6 @@ class LawA2AgentExecutor(AgentExecutor):
                     m.get("llm_base_url"),
                     m.get("llm_model"),
                 )
-                # #region agent log
-                agent_dbg(
-                    "H4",
-                    "executor.py:find_task",
-                    "a2a thread llm",
-                    {"has_key": bool(key), "err": err, "client_required": client_llm_required()},
-                )
-                # #endregion
                 if err and (client_llm_required() or m.get("llm_api_key")):
                     result_container["error"] = err
                     finished_event.set()

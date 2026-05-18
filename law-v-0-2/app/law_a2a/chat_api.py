@@ -27,7 +27,7 @@ def _sse(data: dict) -> str:
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-from law_a2a.client_llm_util import agent_dbg, client_llm_required, make_client_sdk, parse_client_llm_fields
+from law_a2a.client_llm_util import client_llm_required, make_client_sdk, parse_client_llm_fields
 
 
 def _ts() -> str:
@@ -44,26 +44,9 @@ def _deny_stream(msg: str):
 
 @router.post("/chat")
 async def chat(req: ChatRequest):
-    # #region agent log
-    agent_dbg(
-        "H1",
-        "chat_api.py:chat:entry",
-        "chat request",
-        {
-            "has_key": bool((req.llm_api_key or "").strip()),
-            "has_bu": bool((req.llm_base_url or "").strip()),
-            "has_md": bool((req.llm_model or "").strip()),
-            "client_required": client_llm_required(),
-        },
-    )
-    # #endregion
-
     key, bu, md, err = parse_client_llm_fields(req.llm_api_key, req.llm_base_url, req.llm_model)
     if err:
         if client_llm_required() or (req.llm_api_key or "").strip():
-            # #region agent log
-            agent_dbg("H2", "chat_api.py:chat:deny", "client llm incomplete", {"err": err})
-            # #endregion
             if client_llm_required() and not (req.llm_api_key or "").strip():
                 err = "远程服务不会使用服务端 API Key。请在前端填写你自己的 llm_api_key、llm_base_url、llm_model。"
             return _deny_stream(err)
@@ -89,9 +72,6 @@ async def chat(req: ChatRequest):
         if key:
             llm_src = f"仅使用你的 Key | {bu} | {md}"
             token = lf_llm.set_request_llm(make_client_sdk(key, bu, md))
-            # #region agent log
-            agent_dbg("H3", "chat_api.py:stream:llm", "client llm bound", {"bu": bu, "md": md})
-            # #endregion
         else:
             llm_src = "服务端 LLM（仅 LAW_CHAT_CLIENT_LLM_REQUIRED=false 且已配置服务端 Key）"
 

@@ -1,7 +1,5 @@
-import json
 import os
-import time
-from typing import Any, Optional
+from typing import Optional
 
 from law_compat.openai_sdk import OpenAICompatibleSDK
 
@@ -28,28 +26,3 @@ def parse_client_llm_fields(
 
 def make_client_sdk(key: str, bu: str, md: str) -> OpenAICompatibleSDK:
     return OpenAICompatibleSDK(base_url=bu, model=md, api_key=key)
-
-
-def agent_dbg(hypothesis_id: str, location: str, message: str, data: Optional[dict] = None) -> None:
-    payload = {
-        "sessionId": "c88a63",
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data or {},
-        "timestamp": int(time.time() * 1000),
-    }
-    line = json.dumps(payload, ensure_ascii=False)
-    for p in (
-        os.getenv("LAW_DEBUG_LOG", "").strip(),
-        "debug-c88a63.log",
-        os.path.join(os.path.dirname(__file__), "..", "..", "..", "debug-c88a63.log"),
-    ):
-        if not p:
-            continue
-        try:
-            with open(p, "a", encoding="utf-8") as f:
-                f.write(line + "\n")
-            return
-        except OSError:
-            continue
